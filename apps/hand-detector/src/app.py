@@ -232,11 +232,18 @@ def print_coordinates_table(landmarks):
         print(f"{idx:3d}  {LANDMARK_NAMES[idx]:<22s}  {lm.x:8.4f}  {lm.y:8.4f}  {lm.z:8.4f}")
     print(separator)
 
+# ---------------------------------------------------------------------------
+# Hand pose heuristics
+# ---------------------------------------------------------------------------
 def distance(a, b):
     """Euclidean distance between two landmarks (using x, y)."""
     return math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2)
 
-
+# ---------------------------------------------------------------------------
+# For simplicity, the "open hand" condition is defined as all fingertips being
+# farther from the wrist than their respective middle joints.  This is a very
+# basic heuristic and won't cover all hand poses, but it serves well for this demo.
+# ---------------------------------------------------------------------------
 def is_hand_open(landmarks):
     """Return True if all 5 fingers are extended (open hand)."""
     wrist = landmarks[0]
@@ -257,6 +264,12 @@ def is_hand_open(landmarks):
     pinky_open = distance(landmarks[20], wrist) > distance(landmarks[18], wrist)
 
     return all([thumb_open, index_open, middle_open, ring_open, pinky_open])
+
+# ----------------------------------------------------------------------------
+# For simplicity, the "closed fist" condition is defined as all fingertips being
+# closer to the wrist than their respective middle joints.  This is a very
+# basic heuristic and won't cover all hand poses, but it serves well for this demo.
+# ----------------------------------------------------------------------------
 
 
 def is_hand_closed(landmarks):
