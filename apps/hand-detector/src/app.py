@@ -42,8 +42,6 @@ Controls
 --------
   q      - Quit the application.
   p      - Pause / resume the coordinate printout in the terminal.
-  s      - Take a single snapshot of all coordinates to the terminal
-           (useful when the live printout is paused).
 
 Requirements
 ------------
@@ -60,9 +58,10 @@ Usage
 
 import os
 import time
-import math
 import cv2
 import mediapipe as mp
+from lib import helpers
+from lib import utils
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -86,52 +85,6 @@ if not os.path.exists(MODEL_PATH):
     urllib.request.urlretrieve(model_url, MODEL_PATH)
     print("Download complete.")
 
-# Human-readable landmark names, indexed 0-20.
-LANDMARK_NAMES: list[str] = [
-    "WRIST",
-    "THUMB_CMC",
-    "THUMB_MCP",
-    "THUMB_IP",
-    "THUMB_TIP",
-    "INDEX_FINGER_MCP",
-    "INDEX_FINGER_PIP",
-    "INDEX_FINGER_DIP",
-    "INDEX_FINGER_TIP",
-    "MIDDLE_FINGER_MCP",
-    "MIDDLE_FINGER_PIP",
-    "MIDDLE_FINGER_DIP",
-    "MIDDLE_FINGER_TIP",
-    "RING_FINGER_MCP",
-    "RING_FINGER_PIP",
-    "RING_FINGER_DIP",
-    "RING_FINGER_TIP",
-    "PINKY_MCP",
-    "PINKY_PIP",
-    "PINKY_DIP",
-    "PINKY_TIP",
-]
-
-# Skeleton connections (pairs of landmark indices that should be joined by a
-# line).  These follow the standard MediaPipe hand topology.
-HAND_CONNECTIONS: list[tuple[int, int]] = [
-    # Thumb
-    (0, 1), (1, 2), (2, 3), (3, 4),
-    # Index finger
-    (0, 5), (5, 6), (6, 7), (7, 8),
-    # Middle finger
-    (5, 9), (9, 10), (10, 11), (11, 12),
-    # Ring finger
-    (9, 13), (13, 14), (14, 15), (15, 16),
-    # Pinky
-    (13, 17), (0, 17), (17, 18), (18, 19), (19, 20),
-]
-
-# Colors (BGR format for OpenCV).
-COLOR_BONE = (0, 255, 0)        # Green lines between joints.
-COLOR_JOINT = (0, 0, 255)       # Red circles at each joint.
-COLOR_LABEL = (255, 255, 255)   # White text for landmark labels.
-COLOR_COORD = (0, 255, 255)     # Yellow text for the coordinate panel.
-
 # ---------------------------------------------------------------------------
 # MediaPipe Tasks API setup
 # ---------------------------------------------------------------------------
@@ -150,142 +103,6 @@ options = HandLandmarkerOptions(
 )
 
 # ---------------------------------------------------------------------------
-# Drawing helpers
-# ---------------------------------------------------------------------------
-
-
-def draw_skeleton(frame, landmarks, connections):
-    """Draw the hand skeleton (bones + joints) onto *frame*.
-
-    Parameters
-    ----------
-    frame : numpy.ndarray
-        The BGR image to draw on (modified in place).
-    landmarks : list
-        List of 21 ``NormalizedLandmark`` objects from MediaPipe.
-    connections : list[tuple[int, int]]
-        Pairs of landmark indices to connect with lines.
-    """
-    h, w, _ = frame.shape
-    pixel_coords = [(int(lm.x * w), int(lm.y * h)) for lm in landmarks]
-
-    # Draw bones (lines).
-    for start_idx, end_idx in connections:
-        cv2.line(frame, pixel_coords[start_idx], pixel_coords[end_idx],
-                 COLOR_BONE, 2)
-
-    # Draw joints (circles) and index numbers.
-    for idx, (px, py) in enumerate(pixel_coords):
-        cv2.circle(frame, (px, py), 6, COLOR_JOINT, -1)
-        # Place the landmark index slightly above-right of the dot.
-        cv2.putText(frame, str(idx), (px + 8, py - 8),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, COLOR_LABEL, 1,
-                    cv2.LINE_AA)
-
-
-def draw_coordinate_panel(frame, landmarks):
-    """Render a translucent overlay on the left side showing all coordinates.
-
-    Each line shows:  ``<index> <NAME> x=... y=... z=...``
-
-    Parameters
-    ----------
-    frame : numpy.ndarray
-        The BGR image to draw on (modified in place).
-    landmarks : list
-        List of 21 ``NormalizedLandmark`` objects from MediaPipe.
-    """
-    # Semi-transparent dark rectangle as background for readability.
-    overlay = frame.copy()
-    panel_w = 420
-    panel_h = 21 * 22 + 30  # 21 landmarks * 22 px line height + padding
-    cv2.rectangle(overlay, (0, 0), (panel_w, panel_h), (0, 0, 0), -1)
-    cv2.addWeighted(overlay, 0.55, frame, 0.45, 0, frame)
-
-    # Title
-    cv2.putText(frame, "Landmark Coordinates (normalized)", (8, 18),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.5, COLOR_COORD, 1, cv2.LINE_AA)
-
-    # One line per landmark.
-    for idx, lm in enumerate(landmarks):
-        text = f"{idx:2d} {LANDMARK_NAMES[idx]:<20s} x={lm.x:.3f} y={lm.y:.3f} z={lm.z:.3f}"
-        y_pos = 40 + idx * 22
-        cv2.putText(frame, text, (8, y_pos),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.38, COLOR_COORD, 1,
-                    cv2.LINE_AA)
-
-
-def print_coordinates_table(landmarks):
-    """Print a formatted table of all landmark coordinates to the terminal.
-
-    Parameters
-    ----------
-    landmarks : list
-        List of 21 ``NormalizedLandmark`` objects from MediaPipe.
-    """
-    header = f"{'ID':>3s}  {'Name':<22s}  {'x':>8s}  {'y':>8s}  {'z':>8s}"
-    separator = "-" * len(header)
-    print(f"\n{separator}")
-    print(header)
-    print(separator)
-    for idx, lm in enumerate(landmarks):
-        print(f"{idx:3d}  {LANDMARK_NAMES[idx]:<22s}  {lm.x:8.4f}  {lm.y:8.4f}  {lm.z:8.4f}")
-    print(separator)
-
-# ---------------------------------------------------------------------------
-# Hand pose heuristics
-# ---------------------------------------------------------------------------
-def distance(a, b):
-    """Euclidean distance between two landmarks (using x, y)."""
-    return math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2)
-
-# ---------------------------------------------------------------------------
-# For simplicity, the "open hand" condition is defined as all fingertips being
-# farther from the wrist than their respective middle joints.  This is a very
-# basic heuristic and won't cover all hand poses, but it serves well for this demo.
-# ---------------------------------------------------------------------------
-def is_hand_open(landmarks):
-    """Return True if all 5 fingers are extended (open hand)."""
-    wrist = landmarks[0]
-
-    # Thumb: TIP (4) farther from wrist than IP (3)
-    thumb_open = distance(landmarks[4], wrist) > distance(landmarks[3], wrist)
-
-    # Index: TIP (8) farther from wrist than PIP (6)
-    index_open = distance(landmarks[8], wrist) > distance(landmarks[6], wrist)
-
-    # Middle: TIP (12) farther from wrist than PIP (10)
-    middle_open = distance(landmarks[12], wrist) > distance(landmarks[10], wrist)
-
-    # Ring: TIP (16) farther from wrist than PIP (14)
-    ring_open = distance(landmarks[16], wrist) > distance(landmarks[14], wrist)
-
-    # Pinky: TIP (20) farther from wrist than PIP (18)
-    pinky_open = distance(landmarks[20], wrist) > distance(landmarks[18], wrist)
-
-    return all([thumb_open, index_open, middle_open, ring_open, pinky_open])
-
-# ----------------------------------------------------------------------------
-# For simplicity, the "closed fist" condition is defined as all fingertips being
-# closer to the wrist than their respective middle joints.  This is a very
-# basic heuristic and won't cover all hand poses, but it serves well for this demo.
-# ----------------------------------------------------------------------------
-
-
-def is_hand_closed(landmarks):
-    """Return True if all 5 fingers are curled (fist)."""
-    wrist = landmarks[0]
-
-    thumb_closed = distance(landmarks[4], wrist) < distance(landmarks[3], wrist)
-    index_closed = distance(landmarks[8], wrist) < distance(landmarks[6], wrist)
-    middle_closed = distance(landmarks[12], wrist) < distance(landmarks[10], wrist)
-    ring_closed = distance(landmarks[16], wrist) < distance(landmarks[14], wrist)
-    pinky_closed = distance(landmarks[20], wrist) < distance(landmarks[18], wrist)
-
-    return all([thumb_closed, index_closed, middle_closed, ring_closed, pinky_closed])
-
-
-# ---------------------------------------------------------------------------
 # Main loop
 # ---------------------------------------------------------------------------
 
@@ -296,12 +113,13 @@ def main():
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
+    # Check if the Camera is available
     if not cap.isOpened():
         print("ERROR: Could not open camera. Check CAMERA_INDEX.")
         return
 
     print("Starting camera...")
-    print("Controls:  q = quit  |  p = pause/resume terminal output  |  s = snapshot coords")
+    print("Controls:  q = quit  |  p = pause/resume terminal output")
 
     printing_enabled = True  # Toggle with 'p'.
 
@@ -326,12 +144,15 @@ def main():
                 if results.hand_landmarks:
                     landmarks = results.hand_landmarks[0]
 
-                    if is_hand_open(landmarks):
-                        label = "OPEN HAND"
+                    if helpers.is_thumb_open(landmarks):
+                        label = "Power On/Off lights"
                         color = (0, 255, 0)
-                    elif is_hand_closed(landmarks):
-                        label = "CLOSED FIST"
-                        color = (0, 0, 255)
+                    elif helpers.is_middle_open(landmarks):
+                        label = "Volume Up/Down"
+                        color = (255, 0, 0)
+                    elif helpers.is_middle_and_index_open(landmarks): 
+                        label = "Next/Previous Track"
+                        color = (255, 0, 0)
                     else:
                         label = "PARTIAL"
                         color = (200, 200, 200)
@@ -340,14 +161,7 @@ def main():
                                 cv2.FONT_HERSHEY_SIMPLEX, 1.5, color, 3)
 
                     # Draw skeleton and per-landmark index numbers.
-                    draw_skeleton(frame, landmarks, HAND_CONNECTIONS)
-
-                    # Draw the coordinate overlay panel.
-                    draw_coordinate_panel(frame, landmarks)
-
-                    # Terminal output (continuous, ~every frame).
-                    if printing_enabled:
-                        print_coordinates_table(landmarks)
+                    utils.draw_skeleton(frame, landmarks, utils.HAND_CONNECTIONS)
                 else:
                     # No hand detected - show a hint.
                     cv2.putText(frame, "No hand detected", (30, 50), 
@@ -363,11 +177,6 @@ def main():
                     printing_enabled = not printing_enabled
                     state = "ON" if printing_enabled else "OFF"
                     print(f"[Terminal output {state}]")
-                elif key == ord("s"):
-                    if results.hand_landmarks:
-                        print_coordinates_table(results.hand_landmarks[0])
-                    else:
-                        print("[No hand detected - nothing to snapshot]")
 
     finally:
         cap.release()
