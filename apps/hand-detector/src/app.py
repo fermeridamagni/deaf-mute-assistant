@@ -147,11 +147,8 @@ def main():
                     if helpers.is_thumb_open(landmarks):
                         label = "Power On/Off lights"
                         color = (0, 255, 0)
-                    elif helpers.is_middle_open(landmarks):
-                        label = "Volume Up/Down"
-                        color = (255, 0, 0)
                     elif helpers.is_middle_and_index_open(landmarks): 
-                        label = "Next/Previous Track"
+                        label = "Power On/Off Ventilator"
                         color = (255, 0, 0)
                     else:
                         label = "PARTIAL"
