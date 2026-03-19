@@ -1,13 +1,12 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
-import tsconfigPaths from "vite-tsconfig-paths";
 
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [tsconfigPaths(), react(), tailwindcss()],
+  plugins: [react(), tailwindcss()],
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   clearScreen: false,
   // Env variables starting with the item of `envPrefix` will be exposed in tauri's source code through `import.meta.env`.
@@ -28,5 +27,8 @@ export default defineConfig({
       // tell vite to ignore watching `src-tauri`
       ignored: ["**/src-tauri/**"],
     },
+  },
+  resolve: {
+    tsconfigPaths: true,
   },
 });
