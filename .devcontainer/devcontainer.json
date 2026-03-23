@@ -27,7 +27,6 @@
     "vscode": {
       "extensions": [
         "biomejs.biome",
-        "prettier.prettier-vscode",
         "ms-python.python",
         "tauri-apps.tauri-vscode",
         "rust-lang.rust-analyzer",
