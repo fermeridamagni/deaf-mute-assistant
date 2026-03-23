@@ -62,6 +62,7 @@ import cv2
 import mediapipe as mp
 from lib import helpers
 from lib import utils
+from lib import handlers
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -122,6 +123,7 @@ def main():
     print("Controls:  q = quit  |  p = pause/resume terminal output")
 
     printing_enabled = True  # Toggle with 'p'.
+    last_sign = "NONE"
 
     try:
         with HandLandmarker.create_from_options(options) as landmarker:
@@ -143,16 +145,36 @@ def main():
 
                 if results.hand_landmarks:
                     landmarks = results.hand_landmarks[0]
+                    current_sign = "NONE"
 
-                    if helpers.is_thumb_open(landmarks):
+                    if helpers.is_hand_open(landmarks):
+                        current_sign = "ALL_ON"
+                        label = "Turn All ON (Open Hand)"
+                        color = (0, 255, 255)
+                    elif helpers.is_hand_closed(landmarks):
+                        current_sign = "ALL_OFF"
+                        label = "Turn All OFF (Fist)"
+                        color = (0, 0, 255)
+                    elif helpers.is_thumb_open(landmarks):
+                        current_sign = "LIGHTS_TOGGLE"
                         label = "Power On/Off lights"
                         color = (0, 255, 0)
                     elif helpers.is_middle_and_index_open(landmarks): 
-                        label = "Power On/Off Ventilator"
+                        current_sign = "FAN_TOGGLE"
+                        label = "Power On/Off Fan"
                         color = (255, 0, 0)
+                    elif helpers.is_pinky_open(landmarks):
+                        current_sign = "DEVICE_3"
+                        label = "Toggle Device 3 (Pinky)"
+                        color = (255, 0, 255)
                     else:
+                        current_sign = "NONE"
                         label = "PARTIAL"
                         color = (200, 200, 200)
+
+                    if current_sign != last_sign and current_sign != "NONE":
+                        handlers.send_to_arduino(current_sign)
+                    last_sign = current_sign
 
                     cv2.putText(frame, label, (30, 80), 
                                 cv2.FONT_HERSHEY_SIMPLEX, 1.5, color, 3)
