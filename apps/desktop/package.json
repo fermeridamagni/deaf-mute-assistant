@@ -1,6 +1,6 @@
 {
-  "name": "deaf-mute-assistant-desktop",
-  "description": "A powerful assistant to Deaf-Mute people powered by AI",
+  "name": "avva-desktop",
+  "description": "AVVA - A powerful assistant to Deaf-Mute people powered by AI",
   "private": true,
   "version": "0.1.0",
   "type": "module",

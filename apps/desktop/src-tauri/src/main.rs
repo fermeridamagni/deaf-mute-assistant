@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    deaf_mute_assistant_desktop_lib::run()
+    avva_desktop_lib::run()
 }

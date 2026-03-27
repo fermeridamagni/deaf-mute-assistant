@@ -1,5 +1,5 @@
 {
-  "name": "deaf-mute-assistant",
+  "name": "avva",
   "private": true,
   "scripts": {
     "build": "turbo run build",
