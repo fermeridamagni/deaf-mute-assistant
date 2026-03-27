@@ -1,5 +1,5 @@
 [package]
-name = "avva-desktop"
+name = "AVVA"
 version = "0.1.0"
 description = "A powerful assistant to Deaf-Mute people powered by AI"
 authors = ["fermeridamagni"]
