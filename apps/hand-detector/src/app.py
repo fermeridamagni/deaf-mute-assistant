@@ -147,11 +147,11 @@ def main():
                     current_sign = "NONE"
                     label = "PARTIAL"
                     color = (200, 200, 200)
-                    
+
                     # Check for two-hand gestures first (higher priority)
                     two_hand_gesture = helpers.detect_two_hand_gesture(
                         results.hand_landmarks)
-                    
+
                     if two_hand_gesture:
                         current_sign, label, color = two_hand_gesture
                     else:
