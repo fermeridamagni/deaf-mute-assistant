@@ -159,7 +159,7 @@ def main():
                         current_sign = "LIGHTS_TOGGLE"
                         label = "Power On/Off lights"
                         color = (0, 255, 0)
-                    elif helpers.is_middle_and_index_open(landmarks): 
+                    elif helpers.is_middle_and_index_open(landmarks):
                         current_sign = "FAN_TOGGLE"
                         label = "Power On/Off Fan"
                         color = (255, 0, 0)
@@ -176,15 +176,17 @@ def main():
                         handlers.send_to_arduino(current_sign)
                     last_sign = current_sign
 
-                    cv2.putText(frame, label, (30, 80), 
+                    cv2.putText(frame, label, (30, 80),
                                 cv2.FONT_HERSHEY_SIMPLEX, 1.5, color, 3)
 
                     # Draw skeleton and per-landmark index numbers.
-                    utils.draw_skeleton(frame, landmarks, utils.HAND_CONNECTIONS)
+                    utils.draw_skeleton(
+                        frame, landmarks, utils.HAND_CONNECTIONS)
                 else:
                     # No hand detected - show a hint.
-                    cv2.putText(frame, "No hand detected", (30, 50), 
-                                cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 100, 255), 2, 
+                    cv2.putText(frame, "No hand detected", (30, 50),
+                                cv2.FONT_HERSHEY_SIMPLEX, 1, (100,
+                                                              100, 255), 2,
                                 cv2.LINE_AA)
 
                 cv2.imshow("Hand Landmarks Debug", frame)
@@ -205,4 +207,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
