@@ -1,3 +1,9 @@
+---
+applyTo: "**/*.{ts,tsx,js,jsx}"
+name: Ultracite Code Standards
+description: This file describes the Ultracite code standards for the project.
+---
+
 # Ultracite Code Standards
 
 This project uses **Ultracite**, a zero-config preset that enforces strict code quality standards through automated formatting and linting.
