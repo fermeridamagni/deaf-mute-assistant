@@ -98,7 +98,7 @@ VisionRunningMode = mp.tasks.vision.RunningMode
 options = HandLandmarkerOptions(
     base_options=BaseOptions(model_asset_path=MODEL_PATH),
     running_mode=VisionRunningMode.VIDEO,
-    num_hands=1,
+    num_hands=2,
     min_hand_detection_confidence=0.7,
     min_tracking_confidence=0.5,
 )
@@ -144,33 +144,40 @@ def main():
                 results = landmarker.detect_for_video(mp_image, timestamp_ms)
 
                 if results.hand_landmarks:
-                    landmarks = results.hand_landmarks[0]
                     current_sign = "NONE"
-
-                    if helpers.is_hand_open(landmarks):
-                        current_sign = "ALL_ON"
-                        label = "Turn All ON (Open Hand)"
-                        color = (0, 255, 255)
-                    elif helpers.is_hand_closed(landmarks):
-                        current_sign = "ALL_OFF"
-                        label = "Turn All OFF (Fist)"
-                        color = (0, 0, 255)
-                    elif helpers.is_thumb_open(landmarks):
-                        current_sign = "LIGHTS_TOGGLE"
-                        label = "Power On/Off lights"
-                        color = (0, 255, 0)
-                    elif helpers.is_middle_and_index_open(landmarks):
-                        current_sign = "FAN_TOGGLE"
-                        label = "Power On/Off Fan"
-                        color = (255, 0, 0)
-                    elif helpers.is_pinky_open(landmarks):
-                        current_sign = "DEVICE_3"
-                        label = "Toggle Device 3 (Pinky)"
-                        color = (255, 0, 255)
+                    label = "PARTIAL"
+                    color = (200, 200, 200)
+                    
+                    # Check for two-hand gestures first (higher priority)
+                    two_hand_gesture = helpers.detect_two_hand_gesture(
+                        results.hand_landmarks)
+                    
+                    if two_hand_gesture:
+                        current_sign, label, color = two_hand_gesture
                     else:
-                        current_sign = "NONE"
-                        label = "PARTIAL"
-                        color = (200, 200, 200)
+                        # Fall back to single-hand gestures (use first detected hand)
+                        landmarks = results.hand_landmarks[0]
+
+                        if helpers.is_hand_open(landmarks):
+                            current_sign = "ALL_ON"
+                            label = "Turn All ON (Open Hand)"
+                            color = (0, 255, 255)
+                        elif helpers.is_hand_closed(landmarks):
+                            current_sign = "ALL_OFF"
+                            label = "Turn All OFF (Fist)"
+                            color = (0, 0, 255)
+                        elif helpers.is_thumb_open(landmarks):
+                            current_sign = "LIGHTS_TOGGLE"
+                            label = "Power On/Off lights"
+                            color = (0, 255, 0)
+                        elif helpers.is_middle_and_index_open(landmarks):
+                            current_sign = "FAN_TOGGLE"
+                            label = "Power On/Off Fan"
+                            color = (255, 0, 0)
+                        elif helpers.is_pinky_open(landmarks):
+                            current_sign = "DEVICE_3"
+                            label = "Toggle Device 3 (Pinky)"
+                            color = (255, 0, 255)
 
                     if current_sign != last_sign and current_sign != "NONE":
                         handlers.send_to_arduino(current_sign)
@@ -179,9 +186,10 @@ def main():
                     cv2.putText(frame, label, (30, 80),
                                 cv2.FONT_HERSHEY_SIMPLEX, 1.5, color, 3)
 
-                    # Draw skeleton and per-landmark index numbers.
-                    utils.draw_skeleton(
-                        frame, landmarks, utils.HAND_CONNECTIONS)
+                    # Draw skeleton for all detected hands
+                    for hand_landmarks in results.hand_landmarks:
+                        utils.draw_skeleton(
+                            frame, hand_landmarks, utils.HAND_CONNECTIONS)
                 else:
                     # No hand detected - show a hint.
                     cv2.putText(frame, "No hand detected", (30, 50),
