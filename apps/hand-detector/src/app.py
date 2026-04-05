@@ -53,7 +53,7 @@ Requirements
 
 Usage
 -----
-    python debug_landmarks.py
+    python src/app.py
 """
 
 import os

@@ -55,7 +55,7 @@ Requirements
 
 Usage
 -----
-    python debug_landmarks.py
+    python src/debug_landmarks.py
 """
 
 import os
@@ -113,6 +113,7 @@ options = HandLandmarkerOptions(
 # ---------------------------------------------------------------------------
 # Main loop
 # ---------------------------------------------------------------------------
+
 
 def main():
     """Entry point: open camera, detect hand, display landmarks and coords."""
@@ -176,7 +177,8 @@ def main():
                     print(f"[Terminal output {state}]")
                 elif key == ord("s"):
                     if results.hand_landmarks:
-                        utils.print_coordinates_table(results.hand_landmarks[0])
+                        utils.print_coordinates_table(
+                            results.hand_landmarks[0])
                     else:
                         print("[No hand detected - nothing to snapshot]")
 
