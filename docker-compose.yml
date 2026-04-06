@@ -1,0 +1,58 @@
+services:
+  # Hand detector service (Python + MediaPipe)
+  hand-detector:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: avva-hand-detector
+    restart: unless-stopped
+    working_dir: /app/apps/hand-detector
+    command: python src/app.py
+    devices:
+      # Camera access - adjust device path as needed
+      - /dev/video0:/dev/video0
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Mount source for development
+      - ./apps/hand-detector:/app/apps/hand-detector
+      # X11 socket for display (if using GUI)
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    network_mode: host
+    privileged: true
+
+  # Desktop app build service (Tauri)
+  desktop:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: avva-desktop
+    working_dir: /app/apps/desktop
+    command: bun run build
+    volumes:
+      - ./apps/desktop:/app/apps/desktop
+      - ./node_modules:/app/node_modules
+    environment:
+      - NODE_ENV=production
+
+  # Development service (all-in-one for dev container)
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: avva-dev
+    stdin_open: true
+    tty: true
+    working_dir: /app
+    command: bash
+    devices:
+      - /dev/video0:/dev/video0
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    network_mode: host
+    privileged: true

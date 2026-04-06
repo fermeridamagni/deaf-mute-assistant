@@ -2,40 +2,49 @@
 // README at: https://github.com/devcontainers/templates/tree/main/src/typescript-node
 {
   "name": "avva",
-  // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-  "image": "mcr.microsoft.com/devcontainers/typescript-node:4-24-trixie",
-  "features": {
-    "ghcr.io/devcontainers/features/node:1": {},
-    "ghcr.io/devcontainers/features/python:1": {},
-    "ghcr.io/devcontainers/features/rust:1": {},
-    "ghcr.io/devcontainers-extra/features/bun:1": {},
-    "ghcr.io/devcontainer-config/features/dot-config:4": {},
-    "ghcr.io/devcontainer-community/devcontainer-features/biomejs.dev": {}
+
+  // Use custom Dockerfile for full ARM64/Raspberry Pi 5 compatibility
+  "build": {
+    "dockerfile": "../Dockerfile",
+    "context": ".."
   },
 
-  // Features to add to the dev container. More info: https://containers.dev/features.
-  // "features": {},
+  // Run as root for device access (camera, GPIO)
+  "remoteUser": "root",
 
-  // Use 'forwardPorts' to make a list of ports inside the container available locally.
-  // "forwardPorts": [],
+  // Device access for camera (Linux-only, ignored on macOS)
+  "runArgs": ["--privileged"],
 
-  // Use 'postCreateCommand' to run commands after the container is created.
-  // "postCreateCommand": "yarn install",
+  // Note: X11 mount removed - not available on macOS
+  // For Linux hosts with X11, add: "mounts": ["source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind"]
 
-  // Configure tool-specific properties.
+  // Environment variables
+  "containerEnv": {
+    "DISPLAY": "${localEnv:DISPLAY}",
+    "PYTHONUNBUFFERED": "1"
+  },
+
+  // Post-create setup
+  "postCreateCommand": "bash .devcontainer/postCreate.sh",
+
+  // Configure tool-specific properties
   "customizations": {
     "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python3.12",
+        "python.analysis.typeCheckingMode": "basic"
+      },
       "extensions": [
         "biomejs.biome",
         "ms-python.python",
+        "ms-python.pylance",
         "tauri-apps.tauri-vscode",
         "rust-lang.rust-analyzer",
-        "christian-kohler.npm-intellisense",
-        "tailwindlabs.tailwindcss-intellisense"
+        "ms-azuretools.vscode-docker"
       ]
     }
-  }
+  },
 
-  // Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
-  // "remoteUser": "root"
+  // Forward common ports
+  "forwardPorts": [3000, 5173, 8080]
 }
